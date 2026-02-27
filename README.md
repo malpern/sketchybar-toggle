@@ -282,6 +282,10 @@ sketchybar-toggle/
 - No runtime dependencies — uses only system frameworks (AppKit, Foundation)
 - No special permissions required
 
+## What's Next
+
+We're exploring expanding this into a broader native macOS event daemon for SketchyBar — bridging Apple frameworks like CoreAudio, MediaRemote, and CoreWLAN that the current helper ecosystem doesn't cover. See the [RFC discussion](https://github.com/FelixKratz/SketchyBar/discussions/802) if you're interested.
+
 ## License
 
 MIT
