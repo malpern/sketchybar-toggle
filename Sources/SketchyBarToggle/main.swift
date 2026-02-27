@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-import BarSwitchCore
+import SketchyBarToggleCore
 
 let version = "0.2.0"
 
@@ -24,7 +24,7 @@ if config.showHelp {
 }
 
 if config.showVersion {
-    print("barswitch \(version)")
+    print("sketchybar-toggle \(version)")
     exit(0)
 }
 
@@ -38,8 +38,8 @@ if config.checkPermissions {
 
         To fix this:
         1. Open System Settings > Privacy & Security > Input Monitoring
-        2. Add and enable the barswitch binary
-        3. You may need to restart barswitch after granting permission
+        2. Add and enable the sketchybar-toggle binary
+        3. You may need to restart sketchybar-toggle after granting permission
 
         """, stderr)
         exit(1)
@@ -80,14 +80,27 @@ guard monitor.start() else {
     Error: Could not create event tap.
 
     This usually means Input Monitoring permission is not granted.
-    Run `barswitch --check-permissions` for details.
+    Run `sketchybar-toggle --check-permissions` for details.
 
     """, stderr)
     exit(1)
 }
 
-print("barswitch v\(version) running (trigger: \(Int(config.triggerZone))px, menu bar: \(Int(config.menuBarHeight))px, debounce: \(Int(config.debounce * 1000))ms)")
+print("sketchybar-toggle v\(version) running (trigger: \(Int(config.triggerZone))px, menu bar: \(Int(config.menuBarHeight))px, debounce: \(Int(config.debounce * 1000))ms)")
 print("Press Ctrl+C to stop.")
+
+// Quick prerequisite check — warn but don't block
+do {
+    let checker = PrerequisiteChecker()
+    let report = checker.check()
+    if !report.allPassed {
+        fputs("\nWarning: some prerequisites are not met:\n", stderr)
+        for issue in report.issues {
+            fputs("  - \(issue)\n", stderr)
+        }
+        fputs("Run `sketchybar-toggle --setup` for details.\n\n", stderr)
+    }
+}
 
 // Run the main run loop — NSApplication needed for NSScreen
 let app = NSApplication.shared
@@ -98,20 +111,61 @@ app.run()
 
 func printUsage() {
     print("""
-    Usage: barswitch [options]
+    Usage: sketchybar-toggle [options]
 
     Options:
       --trigger-zone <px>       Pixels from top of screen to trigger hide (default: 10)
       --menu-bar-height <px>    Pixels from top defining menu bar zone (default: 50)
       --debounce <ms>           Debounce delay in milliseconds (default: 150)
       --check-permissions       Check if Input Monitoring permission is granted
-      --setup                   Show how to configure SketchyBar to launch barswitch
+      --setup                   Check prerequisites and show auto-start instructions
       --version                 Print version and exit
       --help, -h                Show this help
     """)
 }
 
 func runSetup() {
+    // Run prerequisite checks first
+    let checker = PrerequisiteChecker()
+    let report = checker.check()
+
+    print("Checking prerequisites...\n")
+
+    // SketchyBar running
+    if report.sketchyBarRunning {
+        print("  [ok] SketchyBar is running")
+    } else {
+        print("  [!!] SketchyBar does not appear to be running")
+    }
+
+    // topmost setting
+    if report.topmostCorrect {
+        print("  [ok] topmost = \"window\"")
+    } else if let val = report.topmostValue {
+        print("  [!!] topmost = \"\(val)\" (must be \"window\")")
+    } else if report.sketchyBarRunning {
+        print("  [!!] Could not read topmost value (ensure topmost = \"window\" is set)")
+    } else {
+        print("  [!!] Cannot check topmost (SketchyBar not running)")
+    }
+
+    // Menu bar auto-hide
+    if report.menuBarAutoHide {
+        print("  [ok] macOS menu bar auto-hide is enabled")
+    } else {
+        print("  [!!] macOS menu bar auto-hide is not enabled")
+        print("       Set it in System Settings > Control Center > Automatically hide and show the menu bar")
+        print("       After changing, run: killall Dock")
+    }
+
+    print("")
+    if report.allPassed {
+        print("All prerequisites met.\n")
+    } else {
+        print("Some prerequisites need attention (see above).\n")
+    }
+
+    // Existing auto-start instructions
     let home = FileManager.default.homeDirectoryForCurrentUser
     let configDir = home.appendingPathComponent(".config/sketchybar")
     let initLua = configDir.appendingPathComponent("init.lua")
@@ -125,7 +179,7 @@ func runSetup() {
         printSetupInstructions(configFile: sketchybarrc, format: .shell)
     } else {
         print("Could not find SketchyBar config at \(configDir.path)/")
-        print("See the README for manual setup: https://github.com/malpern/barswitch#auto-start")
+        print("See the README for manual setup: https://github.com/malpern/sketchybar-toggle#auto-start")
     }
 }
 
@@ -139,8 +193,8 @@ func printSetupInstructions(configFile: URL, format: ConfigFormat) {
     print("Found SketchyBar \(formatName) config at \(configFile.path)")
 
     if let contents = try? String(contentsOfFile: configFile.path, encoding: .utf8),
-       contents.contains("barswitch") {
-        print("BarSwitch is already configured to auto-start. No changes needed.")
+       contents.contains("sketchybar-toggle") {
+        print("sketchybar-toggle is already configured to auto-start. No changes needed.")
         return
     }
 
@@ -149,11 +203,11 @@ func printSetupInstructions(configFile: URL, format: ConfigFormat) {
     case .lua:
         print("Add this line to \(configFile.path) (before sbar.event_loop()):")
         print("")
-        print("  sbar.exec(\"pkill -x barswitch; barswitch &\")")
+        print("  sbar.exec(\"pkill -x sketchybar-toggle; sketchybar-toggle &\")")
     case .shell:
         print("Add this line to the end of \(configFile.path):")
         print("")
-        print("  pkill -x barswitch; barswitch &")
+        print("  pkill -x sketchybar-toggle; sketchybar-toggle &")
     }
     print("")
     print("Then restart SketchyBar: brew services restart sketchybar")

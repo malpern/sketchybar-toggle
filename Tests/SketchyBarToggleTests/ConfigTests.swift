@@ -1,5 +1,5 @@
 import XCTest
-@testable import BarSwitchCore
+@testable import SketchyBarToggleCore
 
 final class ConfigTests: XCTestCase {
 

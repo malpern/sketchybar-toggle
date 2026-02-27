@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.barswitch.agent</string>
+    <string>com.sketchybar-toggle.agent</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/local/bin/barswitch</string>
+        <string>/usr/local/bin/sketchybar-toggle</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -26,9 +26,9 @@
     <string>/tmp</string>
 
     <key>StandardOutPath</key>
-    <string>/tmp/barswitch.log</string>
+    <string>/tmp/sketchybar-toggle.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/tmp/barswitch.log</string>
+    <string>/tmp/sketchybar-toggle.log</string>
 </dict>
 </plist>

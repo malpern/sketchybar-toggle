@@ -1,4 +1,4 @@
-import BarSwitchCore
+import SketchyBarToggleCore
 
 final class MockBarController: BarController {
     private(set) var hideCallCount = 0

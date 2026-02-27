@@ -3,24 +3,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "barswitch",
+    name: "sketchybar-toggle",
     platforms: [
         .macOS(.v13)
     ],
     targets: [
         .target(
-            name: "BarSwitchCore",
-            path: "Sources/BarSwitchCore"
+            name: "SketchyBarToggleCore",
+            path: "Sources/SketchyBarToggleCore"
         ),
         .executableTarget(
-            name: "barswitch",
-            dependencies: ["BarSwitchCore"],
-            path: "Sources/BarSwitch"
+            name: "sketchybar-toggle",
+            dependencies: ["SketchyBarToggleCore"],
+            path: "Sources/SketchyBarToggle"
         ),
         .testTarget(
-            name: "BarSwitchTests",
-            dependencies: ["BarSwitchCore"],
-            path: "Tests/BarSwitchTests"
+            name: "SketchyBarToggleTests",
+            dependencies: ["SketchyBarToggleCore"],
+            path: "Tests/SketchyBarToggleTests"
         )
     ]
 )
