@@ -22,6 +22,12 @@ The result: you get SketchyBar as your primary status bar, with seamless access 
 
 ## Install
 
+### Homebrew (recommended)
+
+```bash
+brew install malpern/tap/barswitch
+```
+
 ### Build from source
 
 ```bash
