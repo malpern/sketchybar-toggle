@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" alt="SketchyBar Toggle icon" width="200">
+  <img src="icon.png" alt="SketchyBar Toggle icon" width="600">
 </p>
 
 # SketchyBar Toggle
