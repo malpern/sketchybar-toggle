@@ -106,6 +106,14 @@ background = {
 
 ## Auto-start
 
+### Quick setup
+
+Run `barswitch --setup` to detect your SketchyBar config format and get the exact line to add:
+
+```bash
+barswitch --setup
+```
+
 ### Recommended: launch from SketchyBar's config
 
 The simplest way to auto-start BarSwitch is to launch it from your SketchyBar config. This way BarSwitch starts and stops with SketchyBar.
@@ -153,6 +161,9 @@ barswitch
 # Custom thresholds
 barswitch --trigger-zone 10 --menu-bar-height 50 --debounce 150
 
+# Show auto-start setup instructions
+barswitch --setup
+
 # Check permissions
 barswitch --check-permissions
 
@@ -167,6 +178,7 @@ barswitch --version
 | `--trigger-zone <px>` | 10 | Distance from top of screen (in pixels) that triggers SketchyBar to hide |
 | `--menu-bar-height <px>` | 50 | Distance from top defining the menu bar zone — SketchyBar won't reappear until the mouse is below this |
 | `--debounce <ms>` | 150 | Delay in milliseconds before SketchyBar reappears, prevents flicker on rapid mouse movement |
+| `--setup` | | Detect SketchyBar config and show auto-start instructions |
 | `--check-permissions` | | Check if Input Monitoring permission is granted |
 | `--version` | | Print version |
 | `--help` | | Show help |
@@ -215,7 +227,7 @@ barswitch/
 │   └── BarSwitch/
 │       └── main.swift                  # Entry point, signal handlers, run loop
 ├── Tests/
-│   └── BarSwitchTests/                 # 27 unit tests
+│   └── BarSwitchTests/                 # 28 unit tests
 ├── com.barswitch.agent.plist           # launchd plist for auto-start
 └── README.md
 ```
