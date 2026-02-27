@@ -8,6 +8,7 @@ public struct Config: Equatable {
     public var setup = false
     public var showVersion = false
     public var showHelp = false
+    public var debug = false
 
     public init() {}
 }
@@ -46,6 +47,8 @@ public func parseArguments(_ args: [String]) throws -> Config {
             config.showVersion = true
         case "--help", "-h":
             config.showHelp = true
+        case "--debug":
+            config.debug = true
         default:
             throw ConfigError.unknownArgument(args[i])
         }

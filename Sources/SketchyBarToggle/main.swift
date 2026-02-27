@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import SketchyBarToggleCore
 
-let version = "0.3.2"
+let version = "0.4.0"
 
 // MARK: - Parse arguments
 
@@ -29,21 +29,8 @@ if config.showVersion {
 }
 
 if config.checkPermissions {
-    if checkInputMonitoringPermission() {
-        print("Input Monitoring permission is granted.")
-        exit(0)
-    } else {
-        fputs("""
-        Input Monitoring permission is NOT granted.
-
-        To fix this:
-        1. Open System Settings > Privacy & Security > Input Monitoring
-        2. Add and enable the sketchybar-toggle binary
-        3. You may need to restart sketchybar-toggle after granting permission
-
-        """, stderr)
-        exit(1)
-    }
+    print("No special permissions required (v0.4.0+ uses polling instead of event taps).")
+    exit(0)
 }
 
 if config.setup {
@@ -73,20 +60,28 @@ func restoreAndExit() {
 signal(SIGINT) { _ in restoreAndExit() }
 signal(SIGTERM) { _ in restoreAndExit() }
 
-let monitor = EventTapMonitor(stateMachine: stateMachine)
+// Debug logging
+var debugLogFile: FileHandle?
+let debugLog: ((String) -> Void)?
 
-guard monitor.start() else {
-    fputs("""
-    Error: Could not create event tap.
-
-    This usually means Input Monitoring permission is not granted.
-    Run `sketchybar-toggle --check-permissions` for details.
-
-    """, stderr)
-    exit(1)
+if config.debug || ProcessInfo.processInfo.environment["SKETCHYBAR_TOGGLE_DEBUG"] != nil {
+    let logPath = "/tmp/sketchybar-toggle-debug.log"
+    FileManager.default.createFile(atPath: logPath, contents: nil)
+    debugLogFile = FileHandle(forWritingAtPath: logPath)
+    debugLog = { msg in
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(msg)\n"
+        debugLogFile?.write(line.data(using: .utf8) ?? Data())
+    }
+    debugLog?("started with trigger=\(Int(config.triggerZone)) menuBar=\(Int(config.menuBarHeight)) debounce=\(Int(config.debounce * 1000))ms")
+} else {
+    debugLog = nil
 }
 
+let monitor = EventTapMonitor(stateMachine: stateMachine, debugLog: debugLog)
+monitor.start()
+
 print("sketchybar-toggle v\(version) running (trigger: \(Int(config.triggerZone))px, menu bar: \(Int(config.menuBarHeight))px, debounce: \(Int(config.debounce * 1000))ms)")
+if config.debug { print("Debug logging to /tmp/sketchybar-toggle-debug.log") }
 print("Press Ctrl+C to stop.")
 
 // Quick prerequisite check — warn but don't block
@@ -117,8 +112,9 @@ func printUsage() {
       --trigger-zone <px>       Pixels from top of screen to trigger hide (default: 10)
       --menu-bar-height <px>    Pixels from top defining menu bar zone (default: 50)
       --debounce <ms>           Debounce delay in milliseconds (default: 150)
-      --check-permissions       Check if Input Monitoring permission is granted
+      --check-permissions       Check permissions (no longer needed in v0.4.0+)
       --setup                   Check prerequisites and show auto-start instructions
+      --debug                   Log events to /tmp/sketchybar-toggle-debug.log
       --version                 Print version and exit
       --help, -h                Show this help
     """)
@@ -215,49 +211,4 @@ func printSetupInstructions(configFile: URL, format: ConfigFormat) {
     }
     print("")
     print("Then restart SketchyBar: brew services restart sketchybar")
-}
-
-// Shared state for the permission check callback (C callbacks can't capture context)
-private var permissionCheckReceived = false
-
-func checkInputMonitoringPermission() -> Bool {
-    // On modern macOS, CGEvent.tapCreate with .listenOnly can succeed even
-    // without Input Monitoring permission — events are silently dropped.
-    // We verify permission by creating a tap, posting a synthetic event,
-    // and checking if the callback actually fires.
-    permissionCheckReceived = false
-
-    let mask: CGEventMask = (1 << CGEventType.mouseMoved.rawValue)
-    guard let tap = CGEvent.tapCreate(
-        tap: .cghidEventTap,
-        place: .headInsertEventTap,
-        options: .listenOnly,
-        eventsOfInterest: mask,
-        callback: { _, _, event, _ in
-            permissionCheckReceived = true
-            return Unmanaged.passUnretained(event)
-        },
-        userInfo: nil
-    ) else {
-        return false
-    }
-
-    let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-    CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-    CGEvent.tapEnable(tap: tap, enable: true)
-
-    // Post a synthetic mouse-moved event to trigger the callback
-    if let syntheticEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                                     mouseCursorPosition: CGEvent(source: nil)?.location ?? .zero,
-                                     mouseButton: .left) {
-        syntheticEvent.post(tap: .cghidEventTap)
-    }
-
-    // Spin the run loop briefly to allow the callback to fire
-    CFRunLoopRunInMode(.defaultMode, 0.5, false)
-
-    CGEvent.tapEnable(tap: tap, enable: false)
-    CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-
-    return permissionCheckReceived
 }

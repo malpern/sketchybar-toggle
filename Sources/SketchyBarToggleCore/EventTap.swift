@@ -2,86 +2,72 @@ import CoreGraphics
 import AppKit
 import Foundation
 
-/// Sets up a CGEventTap for mouse-moved events and feeds positions to the state machine.
+/// Monitors mouse position by polling NSEvent.mouseLocation on a timer.
+/// This approach requires no special permissions (no Input Monitoring or Accessibility).
 public final class EventTapMonitor {
     private let stateMachine: BarStateMachine
-    private var eventTap: CFMachPort?
+    private let debugLog: ((String) -> Void)?
+    private var pollTimer: DispatchSourceTimer?
+    private let pollInterval: TimeInterval
+    private var pollCount = 0
 
-    public init(stateMachine: BarStateMachine) {
+    public init(
+        stateMachine: BarStateMachine,
+        debugLog: ((String) -> Void)? = nil,
+        pollInterval: TimeInterval = 0.016  // ~60 Hz
+    ) {
         self.stateMachine = stateMachine
+        self.debugLog = debugLog
+        self.pollInterval = pollInterval
     }
 
-    /// Start monitoring mouse events. Returns false if the event tap couldn't be created
-    /// (usually means Input Monitoring permission is not granted).
+    /// Start monitoring mouse position. Always returns true (no permissions needed).
+    @discardableResult
     public func start() -> Bool {
-        let eventMask: CGEventMask = (1 << CGEventType.mouseMoved.rawValue)
-        let selfPointer = Unmanaged.passUnretained(self).toOpaque()
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cghidEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: eventMask,
-            callback: { _, _, event, userInfo in
-                guard let userInfo = userInfo else { return Unmanaged.passUnretained(event) }
-                let monitor = Unmanaged<EventTapMonitor>.fromOpaque(userInfo).takeUnretainedValue()
-                monitor.handleMouseMoved(event: event)
-                return Unmanaged.passUnretained(event)
-            },
-            userInfo: selfPointer
-        ) else {
-            return false
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: pollInterval)
+        timer.setEventHandler { [weak self] in
+            self?.pollMousePosition()
         }
-
-        eventTap = tap
-
-        let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-
+        pollTimer = timer
+        timer.resume()
+        debugLog?("polling started at \(Int(1.0 / pollInterval)) Hz")
         return true
     }
 
     public func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-            eventTap = nil
-        }
+        pollTimer?.cancel()
+        pollTimer = nil
     }
 
-    private func handleMouseMoved(event: CGEvent) {
-        let mouseLocation = event.location
+    private func pollMousePosition() {
+        // NSEvent.mouseLocation is in NS coordinates (origin bottom-left)
+        let mouseNS = NSEvent.mouseLocation
+        guard let screen = screenForNSPoint(mouseNS) else {
+            return
+        }
 
-        guard let screen = screenForPoint(mouseLocation) else { return }
+        // Convert to distance from top of screen
+        let screenTopNS = screen.frame.origin.y + screen.frame.height
+        let distanceFromTop = screenTopNS - mouseNS.y
 
-        let screenTopY = screenTopCGY(for: screen)
-        let distanceFromTop = mouseLocation.y - screenTopY
+        pollCount += 1
+        if distanceFromTop < 60 || pollCount <= 3 || pollCount % 1000 == 0 {
+            debugLog?("poll#\(pollCount) dist=\(Int(distanceFromTop)) state=\(stateMachine.state)")
+        }
 
         stateMachine.handleMousePosition(distanceFromTop: distanceFromTop)
     }
 
     // MARK: - Screen geometry helpers
 
-    private func screenForPoint(_ cgPoint: CGPoint) -> NSScreen? {
-        guard let mainScreen = NSScreen.screens.first else { return nil }
-        let mainHeight = mainScreen.frame.height
-        let nsPoint = NSPoint(x: cgPoint.x, y: mainHeight - cgPoint.y)
-
+    private func screenForNSPoint(_ nsPoint: NSPoint) -> NSScreen? {
         for screen in NSScreen.screens {
-            // Expand by 1px to include screen edges. NSRect.contains() uses
-            // half-open intervals (excludes maxX/maxY), but CG Y=0 (top of
-            // screen) maps to NS maxY, so the top edge would be excluded.
+            // Expand by 1px to include screen edges (NSRect.contains uses half-open intervals)
             if screen.frame.insetBy(dx: -1, dy: -1).contains(nsPoint) {
                 return screen
             }
         }
         return nil
-    }
-
-    private func screenTopCGY(for screen: NSScreen) -> CGFloat {
-        guard let mainScreen = NSScreen.screens.first else { return 0 }
-        let mainHeight = mainScreen.frame.height
-        let nsTopY = screen.frame.origin.y + screen.frame.height
-        return mainHeight - nsTopY
     }
 }
