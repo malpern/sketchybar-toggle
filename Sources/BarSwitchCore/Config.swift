@@ -5,6 +5,7 @@ public struct Config: Equatable {
     public var menuBarHeight: CGFloat = 50
     public var debounce: TimeInterval = 0.15
     public var checkPermissions = false
+    public var setup = false
     public var showVersion = false
     public var showHelp = false
 
@@ -39,6 +40,8 @@ public func parseArguments(_ args: [String]) throws -> Config {
             }
         case "--check-permissions":
             config.checkPermissions = true
+        case "--setup":
+            config.setup = true
         case "--version":
             config.showVersion = true
         case "--help", "-h":

@@ -9,6 +9,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.menuBarHeight, 50)
         XCTAssertEqual(config.debounce, 0.15)
         XCTAssertFalse(config.checkPermissions)
+        XCTAssertFalse(config.setup)
         XCTAssertFalse(config.showVersion)
         XCTAssertFalse(config.showHelp)
     }
@@ -31,6 +32,11 @@ final class ConfigTests: XCTestCase {
     func testCheckPermissions() throws {
         let config = try parseArguments(["--check-permissions"])
         XCTAssertTrue(config.checkPermissions)
+    }
+
+    func testSetup() throws {
+        let config = try parseArguments(["--setup"])
+        XCTAssertTrue(config.setup)
     }
 
     func testVersion() throws {
