@@ -4,6 +4,7 @@ public struct Config: Equatable {
     public var triggerZone: CGFloat = 10
     public var menuBarHeight: CGFloat = 50
     public var debounce: TimeInterval = 0.15
+    public var hideDelay: TimeInterval = 0
     public var checkPermissions = false
     public var setup = false
     public var showVersion = false
@@ -15,6 +16,7 @@ public struct Config: Equatable {
 
 public enum ConfigError: Error, Equatable {
     case unknownArgument(String)
+    case invalidHideDelay
 }
 
 /// Parse command-line arguments into a Config. Accepts the args array (excluding argv[0]).
@@ -39,6 +41,12 @@ public func parseArguments(_ args: [String]) throws -> Config {
             if i < args.count, let val = Double(args[i]) {
                 config.debounce = val / 1000.0
             }
+        case "--hide-delay":
+            i += 1
+            guard i < args.count, let val = Double(args[i]), val.isFinite, val >= 0 else {
+                throw ConfigError.invalidHideDelay
+            }
+            config.hideDelay = val / 1000.0
         case "--check-permissions":
             config.checkPermissions = true
         case "--setup":
