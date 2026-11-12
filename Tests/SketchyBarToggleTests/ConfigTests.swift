@@ -8,6 +8,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.triggerZone, 10)
         XCTAssertEqual(config.menuBarHeight, 50)
         XCTAssertEqual(config.debounce, 0.15)
+        XCTAssertEqual(config.hideDelay, 0)
         XCTAssertFalse(config.checkPermissions)
         XCTAssertFalse(config.setup)
         XCTAssertFalse(config.showVersion)
@@ -27,6 +28,33 @@ final class ConfigTests: XCTestCase {
     func testDebounceConvertsMillisecondsToSeconds() throws {
         let config = try parseArguments(["--debounce", "300"])
         XCTAssertEqual(config.debounce, 0.3)
+    }
+
+    func testHideDelayConvertsMillisecondsToSeconds() throws {
+        let config = try parseArguments(["--hide-delay", "300"])
+        XCTAssertEqual(config.hideDelay, 0.3)
+    }
+
+    func testHideDelayAcceptsZeroAndFractionalMilliseconds() throws {
+        XCTAssertEqual(try parseArguments(["--hide-delay", "0"]).hideDelay, 0)
+        XCTAssertEqual(try parseArguments(["--hide-delay", "12.5"]).hideDelay, 0.0125)
+    }
+
+    func testInvalidHideDelayThrows() {
+        for value in ["-1", "nan", "inf", "1e999", "abc", "--debug"] {
+            XCTAssertThrowsError(try parseArguments(["--hide-delay", value])) { error in
+                XCTAssertEqual(error as? ConfigError, .invalidHideDelay)
+            }
+        }
+        XCTAssertThrowsError(try parseArguments(["--hide-delay"])) { error in
+            XCTAssertEqual(error as? ConfigError, .invalidHideDelay)
+        }
+    }
+
+    func testHideAndShowDelaysAreIndependent() throws {
+        let config = try parseArguments(["--hide-delay", "300", "--debounce", "1"])
+        XCTAssertEqual(config.hideDelay, 0.3)
+        XCTAssertEqual(config.debounce, 0.001)
     }
 
     func testCheckPermissions() throws {

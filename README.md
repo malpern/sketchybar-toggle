@@ -186,6 +186,9 @@ sketchybar-toggle
 # Custom thresholds
 sketchybar-toggle --trigger-zone 10 --menu-bar-height 50 --debounce 150
 
+# Ignore brief touches of the top edge (wait 300ms before hiding)
+sketchybar-toggle --trigger-zone 4 --hide-delay 300 --debounce 150
+
 # Show auto-start setup instructions
 sketchybar-toggle --setup
 
@@ -202,6 +205,7 @@ sketchybar-toggle --version
 |------|---------|-------------|
 | `--trigger-zone <px>` | 10 | Distance from top of screen (in pixels) that triggers SketchyBar to hide |
 | `--menu-bar-height <px>` | 50 | Distance from top defining the menu bar zone — SketchyBar won't reappear until the mouse is below this |
+| `--hide-delay <ms>` | 0 | Time the cursor must remain in the trigger zone before hiding; leaving the zone cancels the pending hide |
 | `--debounce <ms>` | 150 | Delay in milliseconds before SketchyBar reappears, prevents flicker on rapid mouse movement |
 | `--setup` | | Check prerequisites and show auto-start instructions |
 | `--debug` | | Log mouse position and state changes to `/tmp/sketchybar-toggle-debug.log` |
@@ -213,7 +217,7 @@ You can also enable debug logging via the `SKETCHYBAR_TOGGLE_DEBUG=1` environmen
 ### Tuning tips
 
 - **SketchyBar hides too late** (you see overlap): decrease `--trigger-zone` (e.g., `--trigger-zone 5`)
-- **SketchyBar hides when you don't want it to**: increase `--trigger-zone`
+- **SketchyBar hides on brief accidental touches of the top edge**: set `--hide-delay 300`. The cursor must remain inside the trigger zone for 300ms; moving outside it cancels the hide. The default, `0`, preserves immediate hiding. This delays based on cursor position, not actual macOS menu bar visibility, so tune it to avoid overlap.
 - **SketchyBar reappears while the menu bar is still visible**: increase `--menu-bar-height` (e.g., `--menu-bar-height 60`)
 - **Transitions feel slow**: decrease `--debounce` (e.g., `--debounce 100`)
 - **Flickering on rapid mouse movement**: increase `--debounce`
@@ -241,7 +245,8 @@ The core logic is a simple state machine:
 ```
 SKETCHYBAR_VISIBLE (default)
   → mouse enters trigger zone (top 10px)
-  → hide SketchyBar instantly
+  → wait for hide delay (0ms by default; leaving trigger zone cancels)
+  → hide SketchyBar
 
 SKETCHYBAR_HIDDEN
   → mouse leaves menu bar zone (below 50px)

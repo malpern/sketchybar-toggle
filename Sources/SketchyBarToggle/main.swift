@@ -13,6 +13,9 @@ do {
     fputs("Unknown argument: \(arg)\n", stderr)
     printUsage()
     exit(1)
+} catch ConfigError.invalidHideDelay {
+    fputs("--hide-delay requires a finite, non-negative number of milliseconds\n", stderr)
+    exit(1)
 } catch {
     fputs("Error: \(error)\n", stderr)
     exit(1)
@@ -45,7 +48,8 @@ let stateMachine = BarStateMachine(
     controller: controller,
     triggerZone: config.triggerZone,
     menuBarHeight: config.menuBarHeight,
-    debounceInterval: config.debounce
+    debounceInterval: config.debounce,
+    hideDelay: config.hideDelay
 )
 
 // Ensure SketchyBar is visible on startup (recover from previous crash)
@@ -72,7 +76,7 @@ if config.debug || ProcessInfo.processInfo.environment["SKETCHYBAR_TOGGLE_DEBUG"
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(msg)\n"
         debugLogFile?.write(line.data(using: .utf8) ?? Data())
     }
-    debugLog?("started with trigger=\(Int(config.triggerZone)) menuBar=\(Int(config.menuBarHeight)) debounce=\(Int(config.debounce * 1000))ms")
+    debugLog?("started with trigger=\(Int(config.triggerZone)) menuBar=\(Int(config.menuBarHeight)) debounce=\(Int(config.debounce * 1000))ms hideDelay=\(config.hideDelay * 1000)ms")
 } else {
     debugLog = nil
 }
@@ -80,7 +84,7 @@ if config.debug || ProcessInfo.processInfo.environment["SKETCHYBAR_TOGGLE_DEBUG"
 let monitor = EventTapMonitor(stateMachine: stateMachine, debugLog: debugLog)
 monitor.start()
 
-print("sketchybar-toggle v\(version) running (trigger: \(Int(config.triggerZone))px, menu bar: \(Int(config.menuBarHeight))px, debounce: \(Int(config.debounce * 1000))ms)")
+print("sketchybar-toggle v\(version) running (trigger: \(Int(config.triggerZone))px, menu bar: \(Int(config.menuBarHeight))px, debounce: \(Int(config.debounce * 1000))ms, hide delay: \(config.hideDelay * 1000)ms)")
 if config.debug { print("Debug logging to /tmp/sketchybar-toggle-debug.log") }
 print("Press Ctrl+C to stop.")
 
@@ -111,7 +115,8 @@ func printUsage() {
     Options:
       --trigger-zone <px>       Pixels from top of screen to trigger hide (default: 10)
       --menu-bar-height <px>    Pixels from top defining menu bar zone (default: 50)
-      --debounce <ms>           Debounce delay in milliseconds (default: 150)
+      --debounce <ms>           Delay before showing SketchyBar again (default: 150)
+      --hide-delay <ms>         Dwell time in trigger zone before hiding (default: 0)
       --check-permissions       Check permissions (no longer needed in v0.4.0+)
       --setup                   Check prerequisites and show auto-start instructions
       --debug                   Log events to /tmp/sketchybar-toggle-debug.log
